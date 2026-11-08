@@ -1,6 +1,8 @@
-# Cypher AI
+# Argus
 
-Cypher AI is an AI-assisted code review and repository documentation platform. It combines a FastAPI backend, a Next.js dashboard, specialized review agents, and interactive visualizations to help developers understand and improve a codebase.
+### Autonomous Review for GitHub Understanding & Security
+
+Argus is an AI-assisted code review and repository documentation platform. It combines a FastAPI backend, a Next.js dashboard, specialized review agents, and interactive visualizations to help developers understand and improve a codebase.
 
 ## Features
 
