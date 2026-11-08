@@ -1,114 +1,142 @@
-# Repository
+# Cypher AI
 
-## Overview
-Provides a backend API for repository analysis workflows; runs automated multi-agent code review passes; generates repository documentation from parsed source; uses retrieval indexing to ground analysis prompts.
+Cypher AI is an AI-assisted code review and repository documentation platform. It combines a FastAPI backend, a Next.js dashboard, specialized review agents, and interactive visualizations to help developers understand and improve a codebase.
 
-Project type: Full-stack web application with an API service and AI-assisted analysis pipeline.
+## Features
 
-Parsed surface: **66 files** · **197 functions** · **45 classes**
+- **Multi-agent code review:** Six focused agents analyze code for bugs, security issues, performance, readability, architecture, and accessibility.
+- **LangGraph review workflow:** Routes and coordinates review work, including parallel agent execution.
+- **Documentation generation:** Creates a repository README, modular documentation, onboarding guidance, and code docstrings.
+- **Interactive codebase graphs:** Explores dependency, execution-flow, and knowledge graphs in the dashboard.
+- **Code explanations:** Presents file summaries and review findings in a dashboard designed to make results easier to understand.
+- **GitHub integration:** Supports repository ingestion, optional README publishing, and pull-request review webhooks.
+- **Persona-aware results:** Tailors review explanations for an intern, student, frontend developer, or backend developer.
 
-## Architecture / How It Works
-- API requests are handled by `backend/main.py` and dispatched to async background jobs.
-- Repository input (URL/ZIP) is normalized into a workspace by `backend/services/ingestion.py`.
-- Source files are discovered and parsed using `docs/repo_loader.py` and `docs/parser.py`.
-- Parsed content is indexed in `rag/rag_pipeline.py` for retrieval-assisted review/docs generation.
-- Review findings are produced by multi-agent analysis from `agents/` and orchestrated by `agents/orchestrator.py`.
-- Documentation output is assembled in `backend/services/doc_service.py` and includes README, modular docs, and graphs.
-- Frontend polling in `frontend/lib/api.ts` reads job progress via `GET /api/jobs/{job_id}`.
+## Technology
 
-## Project Structure
+- **Frontend:** Next.js 14, React 18, TypeScript, GSAP, and React Flow
+- **Backend:** Python, FastAPI, and Uvicorn
+- **Review orchestration:** LangGraph
+- **AI provider:** NVIDIA NIM-compatible chat API
+- **Job state:** Redis when configured, with an in-process fallback
+- **Repository analysis:** Python AST parsing, code-file discovery, and an in-memory RAG pipeline
+
+## How it works
+
+1. Submit a public GitHub repository URL or upload a ZIP from the dashboard.
+2. The backend creates a temporary workspace, discovers and parses source files, and prepares repository context.
+3. For a review, LangGraph coordinates the specialized agents and produces findings, summaries, and file explanations.
+4. For documentation, the backend generates repository documentation and graph data.
+5. The dashboard polls the job status and displays the results, including interactive graph views.
+
+## Repository layout
+
 ```text
-agents/
-  - agents/__init__.py
-  - agents/accessibility_agent.py
-  - agents/architecture_agent.py
-  - agents/base_agent.py
-  - agents/bug_agent.py
-  - agents/orchestrator.py
-  - ...
+agents/                     Specialized code-review agents and orchestrator
 backend/
-  - backend/__init__.py
-  - backend/main.py
-  - backend/models/__init__.py
-  - backend/models/schemas.py
-  - backend/render.yaml
-  - backend/services/__init__.py
-  - ...
-components/
-  - components/GraphView.tsx
-  - components/TreeView.tsx
-docs/
-  - docs/__init__.py
-  - docs/graph_builder.py
-  - docs/parser.py
-  - docs/readme_generator.py
-  - docs/repo_loader.py
-  - docs/rot_detector.py
+  main.py                   FastAPI app and API routes
+  models/                   API request/response schemas
+  services/                 Review, LangGraph, documentation, and ingestion services
+  utils/                    Backend configuration
+docs/                       Source parsing and graph/documentation builders
 frontend/
-  - frontend/app/components/FaultyTerminal.tsx
-  - frontend/app/dashboard/page.tsx
-  - frontend/app/layout.tsx
-  - frontend/app/page.tsx
-  - frontend/components/CodeExplainer.tsx
-  - frontend/components/DocsResults.tsx
-  - ...
-github/
-  - github/__init__.py
-  - github/commenter.py
-  - github/diff_fetcher.py
-  - github/pr_handler.py
-  - github/webhook.py
-rag/
-  - rag/__init__.py
-  - rag/chunker.py
-  - rag/embedder.py
-  - rag/rag_pipeline.py
-  - rag/vector_store.py
-root/
-utils/
-  - utils/graphAdapter.ts
+  app/                      Next.js pages, landing page, and dashboard
+  components/               Review, documentation, and code-explainer UI
+  src/components/           Interactive graph and tree views
+github/                     GitHub webhook, diff, and comment integrations
+rag/                        Retrieval and in-memory vector-store utilities
+data/workspaces/            Temporary repository workspaces
 ```
 
-## Key Components
-- **`backend/main.py`**: symbols `health()`, `_job_key()`, `_parse_workspace()`; imports __future__, asyncio, backend.models.schemas, backend.services.doc_service.
-- **`docs/readme_generator.py`**: symbols `build_repo_facts()`, `_normalize_repo_path()`, `_looks_like_system_path()`; imports __future__, collections, pathlib, typing.
-- **`backend/services/review_service.py`**: symbols `ReviewService`, `__init__()`, `collect_file_symbols()`, `_compact_structure()`; imports __future__, agents.base_agent, agents.orchestrator, asyncio.
-- **`backend/services/nim_client.py`**: symbols `CallProfile`, `RatePacer`, `get_nim_client()`, `__init__()`, `_get_lock()`; imports __future__, asyncio, backend.utils.settings, dataclasses.
-- **`backend/services/review_routing.py`**: symbols `RepoProfile`, `_ext_of()`, `classify()`, `complexity_score()`; imports __future__, backend.services.review_prompts, backend.utils.settings, dataclasses.
-- **`backend/services/doc_service.py`**: symbols `DocumentationService`, `__init__()`, `_generate_docstrings()`, `_build_modular_docs()`; imports __future__, backend.services.nim_client, backend.services.structure_service, backend.utils.settings.
-- **`backend/services/ingestion.py`**: symbols `IngestionError`, `_ensure_clean_dir()`, `create_workspace()`, `cleanup_workspace()`; imports __future__, io, logging, pathlib.
-- **`backend/models/schemas.py`**: symbols `RepoInput`, `TokenVerifyInput`; imports __future__, pydantic, typing.
-- **`frontend/app/dashboard/page.tsx`**: symbols `LoadingSkeleton()`, `EmptyState()`, `DashboardPage()`; imports @/components/DocsResults, @/components/ReviewResults, @/lib/types, @/src/components/GraphView.
-- **`backend/services/review_graph.py`**: symbols `ReviewState`, `_build_graph()`, `_service()`, `_select_branch()`; imports __future__, agents.base_agent, asyncio, backend.services.
-- **`utils/graphAdapter.ts`**: symbols `normalizePath()`, `uniquePaths()`, `add()`; imports @/lib/types.
-- **`docs/graph_builder.py`**: symbols `build_dependency_graph()`, `build_execution_flowchart()`, `build_knowledge_graph()`; imports __future__, typing.
+## Requirements
 
-## Technologies Used
-- **md**: 3 file(s)
-- **py**: 43 file(s)
-- **yaml**: 1 file(s)
-- **json**: 4 file(s)
-- **js**: 1 file(s)
-- **ts**: 5 file(s)
-- **tsx**: 9 file(s)
-- **requests**
-- **FastAPI**
-- **Redis**
-- **React**
-- **Next.js**
-- **Pydantic**
-- **httpx**
-- **PyJWT**
+- Python 3.10 or later
+- Node.js 18 or later and npm
+- An NVIDIA NIM API key for AI-powered review and documentation
+- Redis is optional for local development; without it, job state uses an in-process fallback
 
-## Usage
-```bash
+## Run locally
+
+### 1. Configure the backend
+
+From the repository root, create a local environment file:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Set `NIM_API_KEY` in `.env`. GitHub tokens and the webhook secret are optional and only needed for their corresponding integrations. Do not commit `.env` or paste real credentials into source files.
+
+Install dependencies and start the API:
+
+```powershell
 python -m venv .venv
-source .venv/bin/activate
-pip install -r backend/requirements.txt
-uvicorn backend.main:app --host 0.0.0.0 --port 8000
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r backend\requirements.txt
+uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+```
 
+The API is available at `http://localhost:8000`; interactive API documentation is at `http://localhost:8000/docs`.
+
+### 2. Configure and run the frontend
+
+In another terminal:
+
+```powershell
+Copy-Item frontend\.env.example frontend\.env.local
 cd frontend
 npm install
 npm run dev
 ```
 
+Open `http://localhost:3000`. If the backend runs at a different address, set `NEXT_PUBLIC_API_BASE_URL` in `frontend/.env.local` to that API base URL.
+
+## API overview
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/health` | Check API health |
+| `POST` | `/api/review/repo` | Start a review for a repository URL |
+| `POST` | `/api/review/upload` | Start a review from an uploaded ZIP |
+| `POST` | `/api/docs/repo` | Generate documentation for a repository URL |
+| `POST` | `/api/docs/upload` | Generate documentation from an uploaded ZIP |
+| `POST` | `/api/github/verify-docs-token` | Verify a token for publishing generated documentation |
+| `POST` | `/api/github/webhook` | Receive configured GitHub webhook events |
+| `GET` | `/api/jobs/{job_id}` | Poll a background job until it completes |
+
+Review and documentation requests run as background jobs. Submit a request, then poll the returned `job_id` at `/api/jobs/{job_id}` until its status is `done` or `error`.
+
+## Configuration
+
+The root `.env.example` documents backend settings, including NVIDIA NIM models and request limits, Redis, CORS, GitHub integration tokens, and job timeouts. `frontend/.env.example` documents `NEXT_PUBLIC_API_BASE_URL`.
+
+Only configure the credentials needed for the features you use:
+
+- `NIM_API_KEY` enables AI-backed review and documentation.
+- `REDIS_URL` configures Redis-backed job status; local development can use the in-process fallback.
+- `GITHUB_REVIEW_TOKEN` and `GITHUB_WEBHOOK_SECRET` are used for pull-request review integration.
+- `GITHUB_DOCS_TOKEN` or a dashboard-provided token enables publishing generated README files.
+
+## My contributions
+
+- Built the specialized code-review agents and connected their findings to the review workflow.
+- Added LangGraph orchestration for coordinating review tasks and parallel agent execution.
+- Built the interactive dashboard for submitting work and exploring review and documentation results.
+- Added interactive codebase graph visualizations, including dependency, execution-flow, and knowledge graphs.
+- Integrated the dashboard with the backend review, documentation, and job-status APIs.
+
+## Development checks
+
+```powershell
+# Frontend production build
+cd frontend
+npm run build
+
+# Backend tests, if present or added
+cd ..
+python -m pytest
+```
+
+## License
+
+No `LICENSE` file is currently included. Although the landing page mentions MIT, include the actual license text in the repository before distributing it under that license.
